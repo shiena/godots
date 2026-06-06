@@ -26,6 +26,10 @@ func _ready() -> void:
 				if c == selected:
 					continue
 				c.set_checked(0, false)
+		if selected:
+			_editor_name_edit.text = utils.guess_editor_name(
+				selected.get_meta("full_path") as String
+			)
 	)
 	_show_all_check_box.toggled.connect(func(_a: bool) -> void:
 		_setup_editor_select_tree()
@@ -61,6 +65,7 @@ func _setup_editor_select_tree() -> void:
 					selected = true
 					item.set_checked(0, true)
 					item.select(0)
+					_editor_name_edit.text = utils.guess_editor_name(x.path)
 
 	var filter: Variant
 	var should_be_selected: Variant

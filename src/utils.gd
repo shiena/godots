@@ -2,24 +2,7 @@ class_name utils
 
 
 static func guess_editor_name(file_name: String) -> String:
-	var base := file_name.get_file()
-
-	# Strip known compound extensions before the generic last-dot fallback.
-	var lower_base := base.to_lower()
-	var compound_extensions: PackedStringArray = [
-		".exe.zip", ".universal.dmg", ".universal.zip",
-		".x86_64", ".x86_32", ".arm64", ".arm32",
-	]
-	var stripped := false
-	for ext: String in compound_extensions:
-		if lower_base.ends_with(ext):
-			base = base.substr(0, base.length() - ext.length())
-			stripped = true
-			break
-	if not stripped:
-		var last_dot := base.rfind(".")
-		if last_dot != -1:
-			base = base.substr(0, last_dot)
+	var base := _strip_known_extensions(file_name.get_file())
 
 	var lower := base.to_lower()
 
@@ -68,6 +51,25 @@ static func guess_editor_name(file_name: String) -> String:
 		name += " mono"
 
 	return name
+
+
+static func _strip_known_extensions(base: String) -> String:
+	var lower_base := base.to_lower()
+	var compound_extensions: PackedStringArray = [
+		".exe.zip", ".universal.dmg", ".universal.zip",
+		".x86_64", ".x86_32", ".arm64", ".arm32",
+	]
+	for ext: String in compound_extensions:
+		if lower_base.ends_with(ext):
+			return base.substr(0, base.length() - ext.length())
+	var simple_extensions: PackedStringArray = [
+		".exe", ".zip", ".dmg", ".tpz", ".aab", ".apk", ".aar",
+		".xz", ".sha256", ".tar",
+	]
+	for ext: String in simple_extensions:
+		if lower_base.ends_with(ext):
+			return base.substr(0, base.length() - ext.length())
+	return base
 
 
 static func find_project_godot_files(dir_path: String) -> Array[edir.DirListResult]:

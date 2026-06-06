@@ -29,6 +29,7 @@ func test_guess_name_dev_releases() -> void:
 	_assert_bulk([
 		["Godot_v4.7-dev3_win64.exe",       "Godot v4.7 dev3"],
 		["Godot_v4.7-dev3_mono_win64.exe",  "Godot v4.7 dev3 mono"],
+		["Godot_v4.7-dev3_mono_win64",      "Godot v4.7 dev3 mono"],
 		["Godot_v4.7-dev1_linux.x86_64",    "Godot v4.7 dev1"],
 		["Godot_v4.7-dev_win64.exe",        "Godot v4.7 dev"],
 	])
@@ -38,9 +39,11 @@ func test_guess_name_mono() -> void:
 	_assert_bulk([
 		["Godot_v4.2_mono_win64.exe",                  "Godot v4.2 mono"],
 		["Godot_v4.5-stable_mono_win64.zip",           "Godot v4.5 stable mono"],
+		["Godot_v4.5-stable_mono_win64",               "Godot v4.5 stable mono"],
 		["Godot_v4.5-stable_mono_linux.x86_64",        "Godot v4.5 stable mono"],
 		["Godot_v4.6-stable_mono_linux.x86_64",        "Godot v4.6 stable mono"],
 		["Godot_v4.6.1-stable_mono_linux.x86_64",      "Godot v4.6.1 stable mono"],
+		["Godot_v4.7-dev3_mono_win64.exe",             "Godot v4.7 dev3 mono"],
 		["Godot_v4.5-stable_mono_win64.exe.zip",       "Godot v4.5 stable mono"],
 		["Godot_v4.5-stable_mono_export_templates.tpz", "Godot v4.5 stable mono"],
 		["godot-lib.4.5.stable.mono.template_release.aar", "Godot v4.5 mono"],
@@ -102,6 +105,48 @@ func test_guess_name_from_full_path() -> void:
 			"/home/user/.local/share/godot/Godot_v4.5-stable_mono_linux.x86_64",
 			"Godot v4.5 stable mono",
 		],
+	])
+
+
+func test_guess_name_zip_basenames_without_extension() -> void:
+	var cases := [
+		["Godot_v4.7-dev3_mono_win64",           "Godot v4.7 dev3 mono"],
+		["Godot_v4.7-dev3_win64",                "Godot v4.7 dev3"],
+		["Godot_v4.6-stable_mono_linux",         "Godot v4.6 stable mono"],
+		["Godot_v4.6.1-stable_mono_linux",       "Godot v4.6.1 stable mono"],
+		["Godot_v4.5-stable_mono_win64",         "Godot v4.5 stable mono"],
+		["Godot_v4.5-stable_win64",              "Godot v4.5 stable"],
+		["Godot_v4.2-rc3_mono_win64",            "Godot v4.2 rc3 mono"],
+	]
+	_assert_bulk(cases)
+	for c: Array in cases:
+		assert_str(utils.guess_editor_name(c[0] as String)).is_not_equal("Godot_v4")
+
+
+func test_guess_name_from_downloaded_zip_filename() -> void:
+	var zip_names := [
+		"Godot_v4.7-dev3_mono_win64.zip",
+		"Godot_v4.6.1-stable_mono_linux.x86_64.zip",
+		"Godot_v4.6-stable_mono_linux.x86_64.zip",
+		"Godot_v4.5-stable_mono_win64.exe.zip",
+	]
+	var expected := [
+		"Godot v4.7 dev3 mono",
+		"Godot v4.6.1 stable mono",
+		"Godot v4.6 stable mono",
+		"Godot v4.5 stable mono",
+	]
+	for i in len(zip_names):
+		var basename := (zip_names[i] as String).replace(".zip", "")
+		_assert_name(basename, expected[i] as String)
+
+
+func test_guess_name_preserves_version_dots() -> void:
+	_assert_bulk([
+		["Godot_v4.6.1-stable_mono_linux.x86_64",  "Godot v4.6.1 stable mono"],
+		["Godot_v4.1.1.1-stable_linux.x86_64",     "Godot v4.1.1.1 stable"],
+		["Godot_v10.20.30.40.50-stable_linux.x86_64", "Godot v10.20.30.40.50 stable"],
+		["godot-3.5.3-stable-win64",               "Godot v3.5.3 stable"],
 	])
 
 
