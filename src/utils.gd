@@ -2,26 +2,40 @@ class_name utils
 
 
 static func guess_editor_name(file_name: String) -> String:
-	var base := file_name
+	var base := file_name.get_file()
 
-	# ✅ Remove only the last extension (.exe, .x86_64, .zip, etc.)
-	var last_dot := base.rfind(".")
-	if last_dot != -1:
-		base = base.substr(0, last_dot)
+	# Strip known compound extensions before the generic last-dot fallback.
+	var lower_base := base.to_lower()
+	var compound_extensions: PackedStringArray = [
+		".exe.zip", ".universal.dmg", ".universal.zip",
+		".x86_64", ".x86_32", ".arm64", ".arm32",
+	]
+	var stripped := false
+	for ext: String in compound_extensions:
+		if lower_base.ends_with(ext):
+			base = base.substr(0, base.length() - ext.length())
+			stripped = true
+			break
+	if not stripped:
+		var last_dot := base.rfind(".")
+		if last_dot != -1:
+			base = base.substr(0, last_dot)
 
 	var lower := base.to_lower()
 
-	# ✅ Allow versions like 4.1, 4.1.1, 4.1.1.1, etc.
+	# Allow versions like 4.1, 4.1.1, 4.1.1.1, etc.
 	var re_version := RegEx.new()
 	re_version.compile(r"godot[-_]?v?(\d+(?:\.\d+)+)") 
 
 	var re_channel := RegEx.new()
-	re_channel.compile(r"-(alpha|beta|rc|stable)(\d*)")
+	re_channel.compile(r"-(pre-alpha|alpha|beta|rc|stable|dev)(\d*)")
 
 	var version := ""
 	var channel := ""
 	var channel_num := ""
-	var mono := lower.findn("mono") != -1 # detect Mono builds
+	var re_mono := RegEx.new()
+	re_mono.compile(r"(?:^|[-_.])mono(?:$|[-_.])")
+	var mono := re_mono.search(lower) != null
 
 	var m := re_version.search(lower)
 	if m:
