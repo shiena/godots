@@ -8,8 +8,7 @@ func _ready() -> void:
 
 	if _is_cli_mode(args):
 		Output.push("Run cli mode")
-		var adjusted_args := args.slice(2) if OS.has_feature("editor") else args
-		CliMain.main(adjusted_args, user_args)
+		CliMain.main(args, user_args)
 		_exit()
 	else:
 		Output.push("Run window mode")
@@ -17,11 +16,16 @@ func _ready() -> void:
 	pass
 
 func _is_cli_mode(args: PackedStringArray) -> bool:
-	if args.size() > 2 and OS.has_feature("editor"):
-		return true
-	elif args.size() >= 2 and OS.has_feature("template"):
-		return true
-	return false
+	if args.is_empty():
+		return false
+
+	var grammar := CliGrammar.new(GodotsCommands.commands)
+	var first := args[0]
+
+	if first.begins_with("-"):
+		return grammar.supports_flag("", "", first)
+
+	return grammar.supports_verb("", first) or grammar.supports_namespace(first)
 
 func _exit() -> void:
 	get_tree().quit()
