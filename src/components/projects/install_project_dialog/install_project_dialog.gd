@@ -15,7 +15,8 @@ signal _successfully_confirmed
 @onready var _create_folder_check: CheckButton = %CreateFolderCheck
 
 var _create_folder_failed_label: Label
-var _set_custom_folder: bool = false
+var _auto_dir: String = ""
+var _last_custom_target_dir: String = ""
 
 
 func _ready() -> void:
@@ -39,24 +40,30 @@ func _ready() -> void:
 	_project_name_edit.text_changed.connect(func(_arg: String) -> void:
 		_update_project_dir()
 	)
-	_project_path_line_edit.text_changed.connect(func(_arg: String) -> void: 
-		_set_custom_folder = true
+	_project_path_line_edit.text_changed.connect(func(_arg: String) -> void:
 		_validate()
 	)
-	_create_folder_check.toggled.connect(func(_arg: bool) -> void:
-		_set_custom_folder = false
-		_toggle_auto_project_dir()
-	)
+	_create_folder_check.toggled.connect(_create_dir_toggled)
 	focus_entered.connect(func() -> void:
 		_validate()
 	)
 	
 	_browse_project_path_button.pressed.connect(func() -> void:
-		_file_dialog.current_dir = _project_path_line_edit.text.strip_edges()
+		var path := _project_path_line_edit.text.strip_edges()
+		if _create_folder_check.button_pressed:
+			_file_dialog.current_dir = path.get_base_dir()
+		else:
+			_file_dialog.current_dir = path
 		_file_dialog.popup_centered_ratio(0.5)
 	)
-	_file_dialog.dir_selected.connect(func(dir: String) -> void: 
-		_project_path_line_edit.text = dir
+	_file_dialog.dir_selected.connect(func(dir: String) -> void:
+		if _create_folder_check.button_pressed:
+			var folder := _project_path_line_edit.text.get_file()
+			if folder != _auto_dir and folder != _last_custom_target_dir:
+				folder = _auto_dir if _last_custom_target_dir.is_empty() else _last_custom_target_dir
+			_project_path_line_edit.text = dir.path_join(folder)
+		else:
+			_project_path_line_edit.text = dir
 		_update_project_dir()
 	)
 	
@@ -69,7 +76,6 @@ func _ready() -> void:
 
 
 func raise(project_name:="New Game Project", args: Variant = null) -> void:
-	_set_custom_folder = false
 	_project_name_edit.text = project_name
 	_project_path_line_edit.text = Config.DEFAULT_PROJECTS_PATH.ret()
 	_init_project_dir()
@@ -79,7 +85,10 @@ func raise(project_name:="New Game Project", args: Variant = null) -> void:
 
 
 func _create_project_dir() -> Error:
-	var err := DirAccess.make_dir_absolute(_project_path_line_edit.text.strip_edges())
+	var path := _project_path_line_edit.text.strip_edges()
+	if DirAccess.dir_exists_absolute(path):
+		return OK
+	var err := DirAccess.make_dir_absolute(path)
 	if err != OK:
 		_create_folder_failed_label.text = "%s %s: %s." % [
 			tr("Couldn't create folder."),
@@ -91,31 +100,39 @@ func _create_project_dir() -> Error:
 
 
 func _update_project_dir() -> void:
-	var new_name: String = _project_name_edit.text
-	if not _set_custom_folder:
-		var base_dir := _project_path_line_edit.text.get_base_dir()
-		if not _create_folder_check.button_pressed:
-			_project_path_line_edit.text = base_dir
-		else:
-			_project_path_line_edit.text = base_dir.path_join(_format_dir_name(new_name))
+	var new_auto_dir := _format_dir_name(_project_name_edit.text)
+	if _create_folder_check.button_pressed:
+		var path := _project_path_line_edit.text
+		if path.get_file() == _auto_dir:
+			_project_path_line_edit.text = path.get_base_dir().path_join(new_auto_dir)
+	_auto_dir = new_auto_dir
 	_validate()
 
 
-func _toggle_auto_project_dir() -> void:
-	var new_name: String = _project_name_edit.text
-	if not _set_custom_folder:
-		if _create_folder_check.button_pressed:
-			_project_path_line_edit.text = _project_path_line_edit.text.path_join(_format_dir_name(new_name))
+func _create_dir_toggled(pressed: bool) -> void:
+	var path := _project_path_line_edit.text
+	if pressed:
+		if _last_custom_target_dir.is_empty():
+			path = path.path_join(_auto_dir)
 		else:
-			_project_path_line_edit.text = _project_path_line_edit.text.get_base_dir()
+			path = path.path_join(_last_custom_target_dir)
+	else:
+		path = path.rstrip("/\\")
+		if path.get_file() == _auto_dir:
+			_last_custom_target_dir = ""
+		else:
+			_last_custom_target_dir = path.get_file()
+		path = path.get_base_dir()
+	_project_path_line_edit.text = path
 	_validate()
 
 
 func _init_project_dir() -> void:
-	var new_name: String = _project_name_edit.text
+	_auto_dir = ""
+	_last_custom_target_dir = ""
+	_update_project_dir()
 	if _create_folder_check.button_pressed:
-		_project_path_line_edit.text = _project_path_line_edit.text.path_join(_format_dir_name(new_name))
-	_validate()
+		_create_dir_toggled(true)
 
 
 func _format_dir_name(original_name: String) -> String:
